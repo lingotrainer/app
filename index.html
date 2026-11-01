@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de" data-mode="static">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lingotrainer</title>
+  <!-- PWA: installierbar (Android Chrome, iPhone Safari „Zum Home-Bildschirm“), Service Worker in offline.js -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#b3261e">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Lingotrainer">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <a href="#/" class="brand"><span class="brand-txt">Lingotrainer</span></a>
+    <nav>
+      <a href="#/today"><b data-t>Heute</b></a>
+      <a href="#/review" id="nav-review" data-t>Wiederholen</a>
+      <a href="#/read" id="nav-read" hidden data-t>Lesen</a>
+      <a href="#/stats" data-t>Statistik</a>
+      <a href="#/record" id="nav-record" title="Aufnahme-Seite für Muttersprachler" data-t data-t-title>Aufnehmen</a>
+      <a href="#/check" id="nav-check" title="Ungeprüfte Inhalte prüfen (Muttersprachler)" data-t data-t-title>Prüfen</a>
+    </nav>
+    <div class="tools">
+      <span id="net-slot"></span>
+      <!-- Einstellungen: Tempo, Translit/IPA, automatisch weiter, Lautschrift-Seite, Aufnehmen/Prüfen ohne Lernende (account.js), Sprache, Benutzer (account.js setzt den Namen in die Zusammenfassung) -->
+      <details class="prefs">
+        <summary title="Einstellungen" data-t-title>⚙<span id="prefs-name"></span></summary>
+        <div class="prefs-panel">
+          <div class="row"><span id="rate-slot"></span><span class="small muted" data-t>Wiedergabe</span></div>
+          <label class="row"><span data-t>Umschrift</span> <select id="opt-translit"><option value="always" data-t>immer</option><option value="adaptive" data-t>adaptiv</option><option value="never" data-t>nie (antippen)</option></select></label>
+          <label title="Lautschrift (IPA) anzeigen" data-t-title><input type="checkbox" id="opt-ipa"> IPA</label>
+          <label title="Nach einer richtigen Antwort ohne Tippen auf „Weiter“ zur nächsten Aufgabe (bei Fehlern hält die Übung an)" data-t-title><input type="checkbox" id="opt-autonext"> <span data-t>Automatisch weiter</span></label>
+          <div class="prefs-links"><a href="#/ipa" id="nav-ipa" data-t>Lautschrift (IPA-Legende)</a><a href="#/offline" data-t>🧳 Offline &amp; unterwegs</a><a href="#/about" data-t>Quellen &amp; Lizenzen</a></div>
+          <div id="user-slot" class="row"></div>
+        </div>
+      </details>
+    </div>
+  </header>
+  <main id="app" data-t>Lade …</main>
+  <div id="toast"></div>
+  <script type="module" src="pages-start.js"></script>
+</body>
+</html>

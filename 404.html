@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><title>Lingotrainer</title></head>
+<body style="font-family:system-ui,sans-serif;padding:1em"><p>…</p>
+<script>
+(async () => {
+  const parts = location.pathname.split('/').slice(1, -1);
+  for (let i = parts.length; i >= 0; i--) {
+    const base = '/' + parts.slice(0, i).map(p => p + '/').join('');
+    try { if ((await fetch(base + 'courses.json', { method: 'HEAD', cache: 'no-store' })).ok) return location.replace(base + location.hash); } catch {}
+  }
+  document.body.innerHTML = '<p><a href="/">/</a></p>';
+})();
+</script></body></html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lingotrainer</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .who { display: grid; gap: 10px; max-width: 340px; margin: 24px auto; }
+    .who button { font-size: 18px; padding: 12px; }
+    .who input[type=text], .who input[type=password] { font-size: 17px; padding: 10px; width: 100%; box-sizing: border-box; }
+    .who label { display: grid; gap: 4px; }
+  </style>
+</head>
+<body>
+  <!-- Anmeldung (frei erreichbar, app/auth.mjs): /login = Benutzerwahl (AUTH_MODE=pick) bzw. Name + Passwort (password),
+       /setup = ersten Benutzer (Admin) anlegen, solange es keinen gibt, /invite?t=… = Passwort setzen über Einladungslink.
+       „Lingotrainer“ ersetzt der Server durch APP_NAME. -->
+  <header><span class="brand">Lingotrainer</span></header>
+  <main>
+    <div class="who card" id="box" data-t>Lade …</div>
+  </main>
+  <script type="module">
+    // Oberflächensprache wie in der App (localStorage ui.lang, i18n.js)
+    import { t, translateDom } from './i18n.js';
+    translateDom();
+    const box = document.getElementById('box');
+    const h = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) k.startsWith('on') ? e[k] = v : e.setAttribute(k, v); e.append(...kids.flat()); return e; };
+    const post = (path, body) => fetch(path, { method: 'POST', body: JSON.stringify(body) }).then(async r => ({ ok: r.ok, ...await r.json().catch(() => ({})) }));
+    const auth = await fetch('api/auth').then(r => r.json()).catch(() => ({ mode: 'pick' }));
+    const page = location.pathname.replace(/.*\//, '');
+    const msg = h('p', { class: 'feedback bad', role: 'alert' });
+    const field = (label, attrs) => h('label', {}, h('span', { class: 'small muted' }, label), h('input', attrs));
+    // Formular: Felder + Knopf; submit → fn(Werte), bei Fehler Meldung
+    function form(title, intro, fields, button, fn) {
+      const f = h('form', { class: 'who', style: 'margin:0' }, ...fields, h('button', { class: 'btn primary', type: 'submit' }, button), msg);
+      f.onsubmit = async e => {
+        e.preventDefault();
+        msg.textContent = '';
+        const v = Object.fromEntries(new FormData(f));
+        if (v.password2 !== undefined && v.password !== v.password2) { msg.textContent = t('Die Passwörter stimmen nicht überein.'); return; }
+        const r = await fn(v);
+        if (r.ok) location.replace('./'); else msg.textContent = r.error ?? t('Fehler');
+      };
+      box.replaceChildren(h('h1', {}, title), intro ? h('p', { class: 'muted small' }, intro) : '', f);
+      f.querySelector('input')?.focus();
+    }
+    const pwFields = () => [field(t('Passwort (mindestens {n} Zeichen)', { n: auth.minPassword ?? 8 }), { type: 'password', name: 'password', autocomplete: 'new-password', required: '', minlength: auth.minPassword ?? 8 }),
+      field(t('Passwort wiederholen'), { type: 'password', name: 'password2', autocomplete: 'new-password', required: '' })];
+
+    if (auth.setup) {
+      // erster Start: Admin anlegen (Server erlaubt das nur ohne Benutzer)
+      const langs = (auth.langs ?? []).map((l, i) => h('label', { style: 'display:flex;gap:6px;align-items:center' },
+        h('input', { type: 'checkbox', name: 'lang-' + l.code, ...(i ? {} : { checked: '' }) }), `${l.name} (${l.native})`));
+      form(t('Einrichten'), t('Noch gibt es kein Konto. Das erste wird Admin und kann weitere Benutzer anlegen.'), [
+        field(t('Kennung (Kleinbuchstaben, z. B. anna)'), { type: 'text', name: 'id', required: '', pattern: '[a-z][a-z0-9_-]{0,31}', autocomplete: 'username', autocapitalize: 'none' }),
+        field(t('Name'), { type: 'text', name: 'name', required: '' }),
+        ...(auth.mode === 'password' ? pwFields() : []),
+        ...(langs.length ? [h('div', { class: 'small muted' }, t('Ich lerne:')), ...langs] : [])],
+        t('Konto anlegen'), v => post('api/setup', { ...v, languages: Object.keys(v).filter(k => k.startsWith('lang-')).map(k => k.slice(5)) }));
+    } else if (page === 'invite') {
+      const token = new URLSearchParams(location.search).get('t') ?? '';
+      const who = await fetch('api/invite?t=' + encodeURIComponent(token)).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!who) box.replaceChildren(h('h1', {}, t('Einladung')), h('p', {}, t('Dieser Link ist ungültig oder abgelaufen. Bitte um einen neuen.')), h('a', { href: 'login' }, t('Zur Anmeldung')));
+      else form(t('Willkommen, {name}!', { name: who.name }), t('Lege dein Passwort fest. Deine Kennung zum Anmelden: {id}', { id: who.id }),
+        [h('input', { type: 'hidden', name: 'user', value: who.id, autocomplete: 'username' }), ...pwFields()],
+        t('Passwort speichern'), v => post('api/invite', { token, password: v.password }));
+    } else if (auth.mode === 'password') {
+      form(t('Anmelden'), '', [
+        field(t('Kennung'), { type: 'text', name: 'user', required: '', autocomplete: 'username', autocapitalize: 'none' }),
+        field(t('Passwort'), { type: 'password', name: 'password', required: '', autocomplete: 'current-password' })],
+        t('Anmelden'), v => post('api/login', v));
+      box.append(h('p', { class: 'small muted' }, t('Passwort vergessen? Der Admin kann dir einen neuen Einladungslink schicken.')));
+    } else {
+      // Benutzerwahl ohne Passwort (Heimnetz)
+      const users = await fetch('api/users').then(r => r.json()).catch(() => []);
+      const list = h('div', { class: 'who', style: 'margin:0' }, ...users.map(u => h('button', { class: 'btn primary', onclick: async () => {
+        const r = await post('api/login', { user: u.id });
+        if (r.ok) location.replace('./');
+      } }, u.name)));
+      if (!users.length) list.textContent = t('Noch keine Benutzer.');
+      box.replaceChildren(h('h1', {}, t('Wer lernt?')), list);
+    }
+  </script>
+</body>
+</html>
